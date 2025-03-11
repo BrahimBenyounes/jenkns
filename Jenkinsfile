@@ -1,64 +1,58 @@
 pipeline {
+    agent any
 
-  tools {
-        // Specify the name of the Maven installation defined in Jenkins
+    environment {
+        dockerimagename = "brahim2023/spring-boot-k8s"
+    }
+
+    tools {
         maven 'Maven'
-   }
-
-  environment {
-    dockerimagename = "abdessamadzebbara/spring-boot-k8s"
-    dockerImage = ""
-  }
-
-  agent any
-
-  stages {
-
-    stage('Build App') {
-        steps {
-            // Build your Spring Boot application
-            sh 'mvn clean package' // Adjust your build command
-        }
-    }
-    
-    stage('Build image') {
-      steps{
-        script {
-          dockerImage = docker.build dockerimagename
-        }
-      }
     }
 
-    stage('Pushing Image') {
-      environment {
-               registryCredential = 'dockerhub-credentials'
-           }
-      steps{
-        script {
-          docker.withRegistry( 'https://registry.hub.docker.com', registryCredential ) {
-            dockerImage.push("latest")
-          }
+    stages {
+        stage('Build App') {
+            steps {
+                sh 'mvn clean package'
+            }
         }
-      }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    def dockerImage = docker.build("${dockerimagename}:latest")
+                }
+            }
+        }
+
+        stage('Push Docker Image') {
+            environment {
+                registryCredential = 'dockerhub-credentials'  // Using Jenkins stored credentials
+            }
+            steps {
+                script {
+                    docker.withRegistry('https://registry.hub.docker.com', registryCredential) {
+                        def dockerImage = docker.build("${dockerimagename}:latest")
+                        dockerImage.push("latest")
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                withKubeConfig([credentialsId: 'mykubeconfig', serverUrl: 'https://192.168.49.2:8443']) {
+                    sh 'kubectl apply -f deployment-k8s.yaml'
+                }
+            }
+        }
     }
 
-    stage('Deploy to Kubernetes') {
-      steps{
-          withKubeConfig([credentialsId: 'mykubeconfig', serverUrl: 'https://192.168.49.2:8443']) {
-            sh 'kubectl apply -f deployment-k8s.yaml'
+    post {
+        success {
+            echo 'Deployment successful!'
         }
-      }
+        failure {
+            echo 'Deployment failed.'
+        }
     }
-
-  }
-
-  post {
-      success {
-          echo 'Deployment successful!'
-      }
-      failure {
-          echo 'Deployment failed.'
-      }
-  }
-
 }
