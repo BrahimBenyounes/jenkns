@@ -19,19 +19,22 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    def dockerImage = docker.build("${dockerimagename}:latest")
+                    // Load Minikube Docker Environment (if using Minikube)
+                    sh 'eval $(minikube docker-env)'
+                    
+                    // Build Docker Image and store it in a variable
+                    dockerImage = docker.build("${dockerimagename}:latest")
                 }
             }
         }
 
         stage('Push Docker Image') {
             environment {
-                registryCredential = 'dockerhub-credentials'  // Using Jenkins stored credentials
+                registryCredential = 'dockerhub-credentials'  // Jenkins stored credentials
             }
             steps {
                 script {
                     docker.withRegistry('https://registry.hub.docker.com', registryCredential) {
-                        def dockerImage = docker.build("${dockerimagename}:latest")
                         dockerImage.push("latest")
                     }
                 }
@@ -49,10 +52,10 @@ pipeline {
 
     post {
         success {
-            echo 'Deployment successful!'
+            echo '✅ Deployment successful!'
         }
         failure {
-            echo 'Deployment failed.'
+            echo '❌ Deployment failed. Check logs.'
         }
     }
 }
