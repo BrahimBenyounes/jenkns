@@ -1,61 +1,64 @@
 pipeline {
-    agent any
 
-    environment {
-        dockerimagename = "brahim2023/spring-boot-k8s"
-    }
-
-    tools {
+  tools {
+        // Specify the name of the Maven installation defined in Jenkins
         maven 'Maven'
-    }
+   }
 
-    stages {
-        stage('Build App') {
-            steps {
-                sh 'mvn clean package'
-            }
-        }
+  environment {
+    dockerimagename = "brahim2023/spring-boot-k8s"
+    dockerImage = ""
+  }
 
-        stage('Build Docker Image') {
-            steps {
-                script {
-                    // Load Minikube Docker Environment (if using Minikube)
-                    sh 'eval $(minikube docker-env)'
-                    
-                    // Build Docker Image and store it in a variable
-                    dockerImage = docker.build("${dockerimagename}:latest")
-                }
-            }
-        }
+  agent any
 
-        stage('Push Docker Image') {
-            environment {
-                registryCredential = 'dockerhub-credentials'  // Jenkins stored credentials
-            }
-            steps {
-                script {
-                    docker.withRegistry('https://registry.hub.docker.com', registryCredential) {
-                        dockerImage.push("latest")
-                    }
-                }
-            }
-        }
+  stages {
 
-        stage('Deploy to Kubernetes') {
-            steps {
-                withKubeConfig([credentialsId: 'mykubeconfig', serverUrl: 'https://192.168.49.2:8443']) {
-                    sh 'kubectl apply -f deployment-k8s.yaml'
-                }
-            }
+    stage('Build App') {
+        steps {
+            // Build your Spring Boot application
+            sh 'mvn clean package' // Adjust your build command
         }
     }
-
-    post {
-        success {
-            echo '✅ Deployment successful!'
+    
+    stage('Build image') {
+      steps{
+        script {
+          dockerImage = docker.build dockerimagename
         }
-        failure {
-            echo '❌ Deployment failed. Check logs.'
-        }
+      }
     }
+
+    stage('Pushing Image') {
+      environment {
+               registryCredential = 'dockerhub-credentials'
+           }
+      steps{
+        script {
+          docker.withRegistry( 'https://registry.hub.docker.com', registryCredential ) {
+            dockerImage.push("latest")
+          }
+        }
+      }
+    }
+
+    stage('Deploy to Kubernetes') {
+      steps{
+          withKubeConfig([credentialsId: 'mykubeconfig', serverUrl: 'https://192.168.49.2:8443']) {
+            sh 'kubectl apply -f deployment-k8s.yaml'
+        }
+      }
+    }
+
+  }
+
+  post {
+      success {
+          echo 'Deployment successful!'
+      }
+      failure {
+          echo 'Deployment failed.'
+      }
+  }
+
 }
