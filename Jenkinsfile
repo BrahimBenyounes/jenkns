@@ -1,13 +1,19 @@
 pipeline {
 
-  tools {
-        maven 'Maven'
-  }
+    tools {
+        maven 'M3'
+        jdk 'jdk17'
+    }
 
-  environment {
-    dockerimagename = "brahim2023/spring-boot-k8s"
-    dockerImage = ""
-  }
+    environment {
+        dockerimagename = "brahim2025/spring-boot-k8s"
+        dockerImage = ""
+        MAVEN_HOME = tool name: 'M3', type: 'maven'
+        JAVA_HOME = tool name: 'jdk17', type: 'jdk'
+        PATH = "${MAVEN_HOME}/bin:${JAVA_HOME}/bin:${env.PATH}"
+    }
+
+ }
 
   agent any
 
@@ -17,7 +23,7 @@ pipeline {
         steps {
             script {
               try {
-                sh 'mvn clean package'
+                bat 'mvn clean package'
               } catch (Exception e) {
                 error "Maven build failed: ${e.getMessage()}"
               }
@@ -58,8 +64,8 @@ pipeline {
       steps {
         script {
           try {
-            withKubeConfig([credentialsId: 'mykubeconfig', serverUrl: 'https://192.168.49.2:8443']) {
-              sh 'kubectl apply -f deployment-k8s.yaml'
+            withKubeConfig([credentialsId: 'mykubeconfig', serverUrl: 'https://localhost:8443']) {
+              bat 'kubectl apply -f deployment-k8s.yaml'
             }
           } catch (Exception e) {
             error "Kubernetes deployment failed: ${e.getMessage()}"
