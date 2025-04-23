@@ -60,7 +60,7 @@ pipeline {
             steps {
                 script {
                     try {
-                        withKubeConfig([credentialsId: 'mykubeconfig', serverUrl: 'https://localhost:8443']) {
+                        withKubeConfig([credentialsId: 'mykubeconfig', serverUrl: 'https://127.0.0.1:52094']) {
                             bat 'kubectl apply -f deployment-k8s.yaml'
                         }
                     } catch (Exception e) {
