@@ -56,19 +56,21 @@ pipeline {
             }
         }
 
-        stage('Deploy to Kubernetes') {
-            steps {
-                script {
-                    try {
-                        withKubeConfig([credentialsId: 'mykubeconfig', serverUrl: 'https://192.168.49.2:8443']) {
-                            bat 'kubectl apply -f deployment-k8s.yaml'
-                        }
-                    } catch (Exception e) {
-                        error "Kubernetes deployment failed: ${e.getMessage()}"
-                    }
+    stage('Deploy to Kubernetes') {
+    steps {
+        script {
+            try {
+                withKubeConfig([credentialsId: 'mykubeconfig', serverUrl: 'https://192.168.49.2:8443']) {
+                    bat 'kubectl apply --dry-run=client -f deployment-k8s.yaml'
+                    bat 'kubectl apply -f deployment-k8s.yaml > kubectl_output.txt 2>&1 || type kubectl_output.txt && exit /b 1'
                 }
+            } catch (Exception e) {
+                error "Kubernetes deployment failed: ${e.getMessage()}"
             }
         }
+    }
+}
+
     }
 
     post {
